@@ -1,0 +1,38 @@
+name: chit_mate
+description: "ChitMate - run friendly chit fund / savings circles with shared chits, voting, fair random draws and payment tracking."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^2.0.0
+  shared_preferences: ^2.5.3
+  # Pinned to the 19.x line (same major as the Split Easy app) because the
+  # zonedSchedule / initialize signatures changed in later majors.
+  flutter_local_notifications: ^19.5.0
+  timezone: ^0.10.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/logo.png
+    - assets/images/logo_symbol.png
+
+# Generate launcher icons with:  dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  remove_alpha_ios: true
+  adaptive_icon_background: "#0F766E"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
