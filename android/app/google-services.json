@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "588422430459",
+    "project_id": "chitmate-e04dd",
+    "storage_bucket": "chitmate-e04dd.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:588422430459:android:d363265f5ee24872183a5e",
+        "android_client_info": {
+          "package_name": "com.example.chit_mate"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCi-KcZHk2aHCNAQFg_EA-z7i2FF8Jbzxg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
