@@ -14,6 +14,7 @@ import '../data/repository.dart';
 import '../domain/actions.dart';
 import '../domain/models.dart';
 import '../services/auth_service.dart';
+import '../services/cloud_store.dart';
 import '../services/reminders.dart';
 
 class AppState extends ChangeNotifier {
@@ -21,6 +22,7 @@ class AppState extends ChangeNotifier {
     required ChitRepository repository,
     ReminderService? reminders,
     this.auth,
+    this.cloud,
     ChitActions? actions,
     DateTime Function()? clock,
   })  : _repository = repository,
@@ -32,6 +34,9 @@ class AppState extends ChangeNotifier {
 
   /// Phone sign-in. Null means the app runs without a login (tests, local use).
   final AuthService? auth;
+
+  /// Shared database of groups. Null means groups live on this phone only.
+  final CloudGroupStore? cloud;
   final ReminderService _reminders;
   final DateTime Function() _clock;
 
@@ -42,6 +47,13 @@ class AppState extends ChangeNotifier {
   bool _authReady = false;
   AppUser? _user;
   StreamSubscription<AppUser?>? _authSub;
+  StreamSubscription<List<ChitGroup>>? _groupsSub;
+  bool _cloudLoaded = false;
+
+  /// Groups that were saved on this phone before sign-in existed. They are
+  /// moved to the cloud, owned by the first person who signs in.
+  final List<ChitGroup> _localOnly = <ChitGroup>[];
+  final Set<Future<void>> _cloudSaves = <Future<void>>{};
   Profile? _profile;
   final List<ChitGroup> _groups = <ChitGroup>[];
   String? _notice;
@@ -58,6 +70,22 @@ class AppState extends ChangeNotifier {
 
   /// True once we know whether someone is already signed in.
   bool get authReady => auth == null || _authReady;
+
+  bool get _useCloud => cloud != null && auth != null && _user != null;
+
+  /// True while a signed-in person's groups are still being fetched.
+  bool get loadingGroups => _useCloud && !_cloudLoaded;
+
+  /// Only the organiser of a group may change it. Members can read it.
+  bool canEdit(ChitGroup g) => !_useCloud || g.adminUid == null || g.adminUid == _user!.uid;
+
+  /// Waits until every change has been handed to the database (for tests).
+  Future<void> flush() async {
+    await _saveChain;
+    while (_cloudSaves.isNotEmpty) {
+      await Future.wait(List<Future<void>>.of(_cloudSaves));
+    }
+  }
 
   /// True when sign-in is in use and nobody is signed in.
   bool get needsLogin => auth != null && _user == null;
@@ -81,21 +109,6 @@ class AppState extends ChangeNotifier {
   DateTime get now => _clock();
 
   Future<void> init() async {
-    final a = auth;
-    if (a != null) {
-      _authSub = a.userChanges.listen((u) {
-        _user = u;
-        _authReady = true;
-        notifyListeners();
-      });
-      try {
-        _user = await a.userChanges.first.timeout(const Duration(seconds: 8));
-        _authReady = true;
-      } catch (_) {
-        _user = a.currentUser;
-        _authReady = true;
-      }
-    }
     await _reminders.init();
     try {
       final data = await _repository.load();
@@ -109,9 +122,99 @@ class AppState extends ChangeNotifier {
     } catch (e) {
       _notice = 'Saved data could not be loaded: $e';
     }
+    if (cloud != null) {
+      // With a shared database, groups come from there. Whatever was saved on
+      // this phone earlier waits to be moved up after the first sign-in.
+      _localOnly.addAll(_groups);
+      _groups.clear();
+    }
     _ready = true;
     notifyListeners();
+
+    final a = auth;
+    if (a != null) {
+      _authSub = a.userChanges.listen(_onUser);
+      try {
+        _onUser(await a.userChanges.first.timeout(const Duration(seconds: 8)));
+      } catch (_) {
+        _onUser(a.currentUser);
+      }
+    }
     await _syncReminders();
+  }
+
+  void _onUser(AppUser? u) {
+    final changed = _user?.uid != u?.uid;
+    _user = u;
+    _authReady = true;
+    if (changed) _switchCloud();
+    notifyListeners();
+  }
+
+  /// Starts (or stops) listening to the signed-in person's groups.
+  void _switchCloud() {
+    _groupsSub?.cancel();
+    _groupsSub = null;
+    _cloudLoaded = false;
+    final c = cloud;
+    if (c == null) return;
+    _groups.clear();
+    final u = _user;
+    if (u == null) {
+      _syncReminders();
+      return;
+    }
+    _groupsSub = c.watchGroups(u).listen(
+      _onCloudGroups,
+      onError: (Object e) {
+        _saveProblem = 'Could not load your groups: $e';
+        _cloudLoaded = true;
+        notifyListeners();
+      },
+    );
+    _migrateLocalGroups(u);
+  }
+
+  void _onCloudGroups(List<ChitGroup> list) {
+    _groups
+      ..clear()
+      ..addAll(list);
+    _cloudLoaded = true;
+    notifyListeners();
+    _syncReminders();
+  }
+
+  /// Moves groups from before sign-in existed up to the cloud, owned by [u].
+  void _migrateLocalGroups(AppUser u) {
+    if (_localOnly.isEmpty) return;
+    final moving = List<ChitGroup>.of(_localOnly);
+    for (final g in moving) {
+      g.adminUid = u.uid;
+      if (g.members.isNotEmpty && g.members.first.phone == null) {
+        g.members.first.phone = u.phone;
+      }
+    }
+    _track(() async {
+      try {
+        for (final g in moving) {
+          await cloud!.saveGroup(g);
+        }
+        _localOnly.removeWhere((g) => moving.contains(g));
+        await _persist();
+        _notice = moving.length == 1
+            ? 'Your group from this phone is now saved to your account.'
+            : '${moving.length} groups from this phone are now saved to your account.';
+        notifyListeners();
+      } catch (e) {
+        _saveProblem = 'Could not move your groups to your account: $e';
+        notifyListeners();
+      }
+    }());
+  }
+
+  void _track(Future<void> f) {
+    _cloudSaves.add(f);
+    f.whenComplete(() => _cloudSaves.remove(f));
   }
 
   /// Signs out. The saved data on this phone is kept.
@@ -122,6 +225,7 @@ class AppState extends ChangeNotifier {
   @override
   void dispose() {
     _authSub?.cancel();
+    _groupsSub?.cancel();
     super.dispose();
   }
 
@@ -170,6 +274,8 @@ class AppState extends ChangeNotifier {
       g = actions.createGroup(
         createdAt: createdAt,
         organiserName: adminName,
+        organiserPhone: _user?.phone,
+        adminUid: _useCloud ? _user!.uid : null,
         name: name,
         chitValue: chitValue,
         plannedMembers: plannedMembers,
@@ -180,13 +286,19 @@ class AppState extends ChangeNotifier {
     _groups.insert(0, g);
     notifyListeners();
     onCreated?.call(g);
-    await _persist();
+    await _save(g);
     return null;
   }
 
   Future<void> deleteGroup(String id) async {
-    _groups.removeWhere((g) => g.id == id);
+    final g = groupById(id);
+    if (g == null || !canEdit(g)) return;
+    _groups.removeWhere((x) => x.id == id);
     notifyListeners();
+    if (_useCloud) {
+      _track(_cloudCall(() => cloud!.deleteGroup(id)));
+      return;
+    }
     await _persist();
   }
 
@@ -195,6 +307,9 @@ class AppState extends ChangeNotifier {
   Future<String?> run(String groupId, void Function(ChitGroup g) change) async {
     final index = _groups.indexWhere((g) => g.id == groupId);
     if (index < 0) return 'This group no longer exists.';
+    if (!canEdit(_groups[index])) {
+      return 'Only the organiser can change this group. You can see everything in it.';
+    }
     final snapshot = jsonEncode(_groups[index].toJson());
     try {
       change(_groups[index]);
@@ -206,7 +321,7 @@ class AppState extends ChangeNotifier {
       return 'Something went wrong: $e';
     }
     notifyListeners();
-    await _persist();
+    await _save(_groups[index]);
     return null;
   }
 
@@ -219,10 +334,41 @@ class AppState extends ChangeNotifier {
 
   // ---------------------------------------------------------- persisting --
 
+  /// Saves a changed group: to the shared database when signed in (without
+  /// waiting for the network), otherwise to this phone.
+  Future<void> _save(ChitGroup g) {
+    if (_useCloud) {
+      _track(_cloudCall(() => cloud!.saveGroup(g)));
+      return Future<void>.value();
+    }
+    return _persist();
+  }
+
+  /// Runs one database call, remembering a failure instead of throwing.
+  Future<void> _cloudCall(Future<void> Function() call) async {
+    try {
+      await call();
+      if (_saveProblem != null) {
+        _saveProblem = null;
+        notifyListeners();
+      }
+    } catch (e) {
+      _saveProblem = 'Could not save: $e';
+      notifyListeners();
+    }
+    await _syncReminders();
+  }
+
   Future<void> _persist() {
     _saveChain = _saveChain.then((_) async {
       try {
-        await _repository.save(AppData(profile: _profile, groups: List<ChitGroup>.of(_groups)));
+        // With a shared database, only groups still waiting to be moved up are
+        // kept on the phone, so one person's groups never stay behind for the
+        // next person who signs in.
+        await _repository.save(AppData(
+          profile: _profile,
+          groups: cloud != null ? List<ChitGroup>.of(_localOnly) : List<ChitGroup>.of(_groups),
+        ));
         if (_saveProblem != null) {
           _saveProblem = null;
           notifyListeners();

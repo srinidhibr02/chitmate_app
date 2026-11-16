@@ -92,3 +92,27 @@ Authorized domains.
 
 Note: until step 2 of the roadmap (Firestore) lands, group data is still stored on the device,
 so signing in as a different person on the same phone shows the same local data.
+
+## 6. Shared data (Cloud Firestore)
+
+Signed-in people now read and write groups in Cloud Firestore (project `chitmate-e04dd`,
+collection `groups`, one document per group):
+
+- The **organiser** (the person who created the group) is the only one who can change it.
+- **Members** see the groups whose member list contains their sign-in phone number. Adding a member
+  with their number is the invitation; removing them takes the group away from them.
+- Groups saved on the phone before login existed are moved to the cloud, owned by the first
+  person who signs in.
+
+One-time setup:
+
+1. Create the Firestore database (production mode, region `asia-south1`) in the Firebase console.
+2. `npm install -g firebase-tools`, then `firebase login`.
+3. Deploy the security rules: `firebase deploy --only firestore` (uses `firebase.json`,
+   `firestore.rules`, `.firebaserc`).
+4. Test the rules (needs the Firebase CLI and Node 18+):
+   `cd rules_test && npm install && npm test`. Please run this once; it starts the local emulator
+   and checks who can read, write and delete.
+
+Until member voting lands (next step), members can view but not vote or change anything; the
+organiser still records votes.

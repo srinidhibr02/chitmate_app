@@ -19,6 +19,7 @@ dependencies:
   # `flutter pub get`; pin them in pubspec.lock once the app builds.
   firebase_core: any
   firebase_auth: any
+  cloud_firestore: any
 
 dev_dependencies:
   flutter_test:

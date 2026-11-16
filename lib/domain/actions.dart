@@ -92,6 +92,8 @@ class ChitActions {
   ChitGroup createGroup({
     required DateTime createdAt,
     required String organiserName,
+    String? organiserPhone,
+    String? adminUid,
     String? name,
     int? chitValue,
     int? plannedMembers,
@@ -112,10 +114,15 @@ class ChitActions {
       createdAt: dateOnly(createdAt),
       chitValue: chitValue,
       plannedMembers: plannedMembers,
+      adminUid: adminUid,
     );
     final organiser = organiserName.trim();
     if (organiser.isNotEmpty) {
-      g.members.add(Member(id: generateId(), name: organiser));
+      g.members.add(Member(
+        id: generateId(),
+        name: organiser,
+        phone: normalizeIndianMobile(organiserPhone ?? ''),
+      ));
     }
     _system(g, 'Group created on ${formatDate(g.createdAt)}.');
     return g;

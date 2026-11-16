@@ -140,7 +140,11 @@ class _MemberSheetState extends State<_MemberSheet> {
               child: Text(_editing ? 'Save' : 'Add member'),
             ),
           ),
-          if (_editing && group != null && !(widget.member?.left ?? false) && group.activeMembers.length > 1) ...<Widget>[
+          if (_editing &&
+              group != null &&
+              !(widget.member?.left ?? false) &&
+              group.activeMembers.length > 1 &&
+              !(state.user != null && widget.member?.phone == state.user!.phone)) ...<Widget>[
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,

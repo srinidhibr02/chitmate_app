@@ -296,6 +296,7 @@ class ChitGroup {
     this.firstAnnouncementDate,
     this.remindersEnabled = true,
     this.startedAt,
+    this.adminUid,
     List<Member>? members,
     List<Chit>? chits,
     List<Round>? rounds,
@@ -307,6 +308,10 @@ class ChitGroup {
 
   final String id;
   String name;
+
+  /// Sign-in id of the organiser who runs this group. Null for groups that
+  /// only exist on one phone (no login).
+  String? adminUid;
 
   /// The only mandatory field when creating a group.
   final DateTime createdAt;
@@ -411,6 +416,7 @@ class ChitGroup {
         'firstAnnouncementDate': firstAnnouncementDate?.toIso8601String(),
         'remindersEnabled': remindersEnabled,
         'startedAt': startedAt?.toIso8601String(),
+        'adminUid': adminUid,
         'members': members.map((m) => m.toJson()).toList(),
         'chits': chits.map((c) => c.toJson()).toList(),
         'rounds': rounds.map((r) => r.toJson()).toList(),
@@ -431,6 +437,7 @@ class ChitGroup {
       firstAnnouncementDate: _dateOrNull(j['firstAnnouncementDate']),
       remindersEnabled: (j['remindersEnabled'] as bool?) ?? true,
       startedAt: _dateOrNull(j['startedAt']),
+      adminUid: j['adminUid'] as String?,
       members: list('members', Member.fromJson),
       chits: list('chits', Chit.fromJson),
       rounds: list('rounds', Round.fromJson),

@@ -27,7 +27,7 @@ class _RootGateState extends State<RootGate> {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final Widget child;
-    if (!_splashDone || !state.ready || !state.authReady) {
+    if (!_splashDone || !state.ready || !state.authReady || state.loadingGroups) {
       child = SplashScreen(
         key: const ValueKey<String>('splash'),
         onFinished: () {
