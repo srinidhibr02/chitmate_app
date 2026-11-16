@@ -1,0 +1,54 @@
+rules_version = '2';
+
+// ChitMate security rules.
+//
+// A group is one document in `groups`. Its `memberPhones` list says who can
+// see it (people who sign in with one of those phone numbers) and `adminUid`
+// says who can change it (the organiser). Everything else is closed.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Present only for people who signed in with a phone number.
+    function myPhone() {
+      return request.auth.token.phone_number;
+    }
+
+    function isAdmin(doc) {
+      return signedIn() && doc.adminUid == request.auth.uid;
+    }
+
+    function validGroup(doc) {
+      return doc.keys().hasOnly(['adminUid', 'memberPhones', 'data', 'updatedAt'])
+        && doc.keys().hasAll(['adminUid', 'memberPhones', 'data'])
+        && doc.adminUid is string
+        && doc.memberPhones is list
+        && doc.memberPhones.size() <= 60
+        && doc.data is map
+        && doc.data.adminUid == doc.adminUid
+        // The organiser must stay in the group so they can never lock themselves out.
+        && myPhone() in doc.memberPhones;
+    }
+
+    match /groups/{groupId} {
+      allow read: if signedIn() && myPhone() in resource.data.memberPhones;
+
+      allow create: if isAdmin(request.resource.data)
+        && validGroup(request.resource.data)
+        && request.resource.data.data.id == groupId;
+
+      allow update: if isAdmin(resource.data)
+        && validGroup(request.resource.data)
+        && request.resource.data.adminUid == resource.data.adminUid;
+
+      allow delete: if isAdmin(resource.data);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

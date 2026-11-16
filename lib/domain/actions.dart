@@ -10,6 +10,7 @@ import 'dart:math';
 import '../core/dates.dart';
 import '../core/format.dart';
 import '../core/ids.dart';
+import '../core/phone.dart';
 import 'labels.dart';
 import 'models.dart';
 import 'notices.dart';
@@ -91,6 +92,8 @@ class ChitActions {
   ChitGroup createGroup({
     required DateTime createdAt,
     required String organiserName,
+    String? organiserPhone,
+    String? adminUid,
     String? name,
     int? chitValue,
     int? plannedMembers,
@@ -111,10 +114,15 @@ class ChitActions {
       createdAt: dateOnly(createdAt),
       chitValue: chitValue,
       plannedMembers: plannedMembers,
+      adminUid: adminUid,
     );
     final organiser = organiserName.trim();
     if (organiser.isNotEmpty) {
-      g.members.add(Member(id: generateId(), name: organiser));
+      g.members.add(Member(
+        id: generateId(),
+        name: organiser,
+        phone: normalizeIndianMobile(organiserPhone ?? ''),
+      ));
     }
     _system(g, 'Group created on ${formatDate(g.createdAt)}.');
     return g;
@@ -212,16 +220,29 @@ class ChitActions {
 
   // -------------------------------------------------------------- members --
 
+  /// Adds a member. When [phone] belongs to someone who left the group, that
+  /// person is brought back with their earlier chit shares instead of being
+  /// added as a new member.
   Member addMember(ChitGroup g, String name, {String? phone, required String actor}) {
     final clean = _cleanName(name, 'a name');
-    if (g.members.length >= maxMembers) {
-      throw RuleViolation('A group can have at most $maxMembers members.');
+    final number = _cleanPhone(phone);
+    if (number != null) {
+      for (final m in g.members) {
+        if (m.phone != number) continue;
+        if (!m.left) {
+          throw RuleViolation('${m.name} is already in this group with that number.');
+        }
+        _requireRoomForOneMore(g);
+        _bringBack(g, m, actor: actor);
+        return m;
+      }
     }
+    _requireRoomForOneMore(g);
     if (g.members.any((m) => m.name.toLowerCase() == clean.toLowerCase())) {
-      throw RuleViolation('Someone named "$clean" is already in this group.');
+      throw RuleViolation('Someone named "$clean" is already in this group (or was before). '
+          'Use a different name, or add them back from the former members list.');
     }
-    final p = phone?.trim();
-    final m = Member(id: generateId(), name: clean, phone: (p == null || p.isEmpty) ? null : p);
+    final m = Member(id: generateId(), name: clean, phone: number);
     g.members.add(m);
     _log(g, '$clean joined the group.', actor: actor);
     return m;
@@ -234,33 +255,106 @@ class ChitActions {
     if (g.members.any((o) => o.id != memberId && o.name.toLowerCase() == clean.toLowerCase())) {
       throw RuleViolation('Someone named "$clean" is already in this group.');
     }
-    final p = phone?.trim();
-    m.phone = (p == null || p.isEmpty) ? null : p;
+    final number = _cleanPhone(phone);
+    if (number != null) {
+      for (final o in g.members) {
+        if (o.id != memberId && o.phone == number) {
+          throw RuleViolation('That number already belongs to ${o.name}.');
+        }
+      }
+    }
+    if (m.phone != number) {
+      _log(g, number == null
+          ? '${m.name}\'s phone number was removed.'
+          : '${m.name}\'s phone number was updated.', actor: actor);
+    }
+    m.phone = number;
     if (m.name != clean) {
       _log(g, '${m.name} is now called $clean.', actor: actor);
       m.name = clean;
     }
   }
 
+  /// Takes a member out of the group.
+  ///
+  /// Someone with no chit shares and no history is simply deleted. Anyone
+  /// else is marked as having left: their shares and payments stay on record
+  /// so the money still adds up, they stop voting, and adding them back (by
+  /// the same phone number) restores them exactly as they were.
   void removeMember(ChitGroup g, String memberId, {required String actor}) {
     final m = g.memberById(memberId);
     if (m == null) throw RuleViolation('Member not found.');
-    for (final c in g.chits) {
-      if (c.ownedBy(memberId)) {
-        throw RuleViolation('${m.name} owns a share of Chit ${c.number}. '
-            'Change or remove that chit first.');
+    if (m.left) throw RuleViolation('${m.name} has already left the group.');
+    if (g.activeMembers.length <= 1) {
+      throw RuleViolation('A group needs at least one member. Delete the group instead.');
+    }
+    final hasShares = g.chits.any((c) => c.ownedBy(memberId));
+    final inHistory = g.rounds.any((r) =>
+        r.votes.any((v) => v.voterId == memberId || v.targetId == memberId) ||
+        r.paid.containsKey(memberId) ||
+        r.tiedMemberIds.contains(memberId) ||
+        r.winnerMemberId == memberId);
+    if (!hasShares && !inHistory) {
+      g.members.removeWhere((x) => x.id == memberId);
+      _log(g, '${m.name} left the group.', actor: actor);
+      return;
+    }
+    m.left = true;
+    m.leftAt = _clock();
+    _log(
+      g,
+      '${m.name} left the group. Their chit shares stay on record. Adding them back '
+      'with ${m.phone == null ? 'the same name' : 'the same phone number'} restores them.',
+      actor: actor,
+    );
+  }
+
+  /// Brings back a member who left, with their chit shares as they were.
+  void restoreMember(ChitGroup g, String memberId, {required String actor}) {
+    final m = g.memberById(memberId);
+    if (m == null) throw RuleViolation('Member not found.');
+    if (!m.left) throw RuleViolation('${m.name} is already in the group.');
+    _requireRoomForOneMore(g);
+    _bringBack(g, m, actor: actor);
+  }
+
+  void _bringBack(ChitGroup g, Member m, {required String actor}) {
+    m.left = false;
+    m.leftAt = null;
+    final shared = g.chits.where((c) => c.ownedBy(m.id)).map((c) => 'Chit ${c.number}').toList();
+    _log(
+      g,
+      shared.isEmpty
+          ? '${m.name} rejoined the group.'
+          : '${m.name} rejoined the group and holds ${shared.join(', ')} again.',
+      actor: actor,
+    );
+  }
+
+  void _requireRoomForOneMore(ChitGroup g) {
+    if (g.activeMembers.length >= maxMembers) {
+      throw RuleViolation('A group can have at most $maxMembers members.');
+    }
+  }
+
+  /// Normalises an optional phone number; refuses one that is not valid.
+  String? _cleanPhone(String? raw) {
+    final text = raw?.trim() ?? '';
+    if (text.isEmpty) return null;
+    final n = normalizeIndianMobile(text);
+    if (n == null) throw RuleViolation('Enter a valid 10-digit mobile number.');
+    return n;
+  }
+
+  /// Shares can only go to people who are in the group. A member who left may
+  /// keep a share they already had, but cannot be given a new one.
+  void _requireOwnersCanHold(ChitGroup g, Iterable<String> ownerIds, {Chit? existing}) {
+    for (final id in ownerIds) {
+      final m = g.memberById(id);
+      if (m != null && m.left && !(existing?.ownedBy(id) ?? false)) {
+        throw RuleViolation('${m.name} has left the group. Add them back first.');
       }
     }
-    for (final r in g.rounds) {
-      final involved = r.votes.any((v) => v.voterId == memberId || v.targetId == memberId) ||
-          r.paid.containsKey(memberId);
-      if (involved) {
-        throw RuleViolation('${m.name} appears in the history of month ${r.number} '
-            'and cannot be removed.');
-      }
-    }
-    g.members.removeWhere((x) => x.id == memberId);
-    _log(g, '${m.name} left the group.', actor: actor);
   }
 
   // ---------------------------------------------------------------- chits --
@@ -272,6 +366,7 @@ class ChitActions {
     if (g.chits.length >= maxChits) {
       throw RuleViolation('A group can have at most $maxChits chits.');
     }
+    _requireOwnersCanHold(g, shares.keys);
     final err = Rules.sharesError(g, shares);
     if (err != null) throw RuleViolation(err);
     var number = 0;
@@ -296,6 +391,7 @@ class ChitActions {
   }) {
     final chit = g.chitById(chitId);
     if (chit == null) throw RuleViolation('Chit not found.');
+    _requireOwnersCanHold(g, shares.keys, existing: chit);
     final err = Rules.sharesError(g, shares);
     if (err != null) throw RuleViolation(err);
     if (g.started) {

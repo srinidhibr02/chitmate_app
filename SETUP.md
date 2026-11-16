@@ -70,3 +70,49 @@ lib/ui       screens, sheets, widgets, animations
 test         rules, actions, state, reminders, widget flows
 tool         verify.sh, simulate_rules.py
 ```
+
+## 5. Firebase login (phone OTP)
+
+Login uses Firebase Authentication. Until Firebase is configured the app still runs,
+on the device only and without a login.
+
+1. In the Firebase console: Authentication → Sign-in method → turn on **Phone**. Add one or two
+   **test phone numbers** with fixed codes for development (no real SMS is sent for those).
+2. Install the tools once: `dart pub global activate flutterfire_cli` (and the Firebase CLI).
+3. In the project folder run `flutterfire configure`, choose your project and the Android (and
+   Web) platforms. This **replaces `lib/firebase_options.dart`** with your real settings.
+4. Add your Android **SHA-1 and SHA-256** fingerprints under Project settings → your Android app
+   (debug: `cd android && ./gradlew signingReport`; later also the Play app-signing key). Phone
+   sign-in will not verify without them.
+5. `flutter pub get`, then `flutter run`. Sign in once; the session is kept, so the login screen
+   only appears again after signing out.
+
+For the web build, add your Firebase Hosting domain under Authentication → Settings →
+Authorized domains.
+
+Note: until step 2 of the roadmap (Firestore) lands, group data is still stored on the device,
+so signing in as a different person on the same phone shows the same local data.
+
+## 6. Shared data (Cloud Firestore)
+
+Signed-in people now read and write groups in Cloud Firestore (project `chitmate-e04dd`,
+collection `groups`, one document per group):
+
+- The **organiser** (the person who created the group) is the only one who can change it.
+- **Members** see the groups whose member list contains their sign-in phone number. Adding a member
+  with their number is the invitation; removing them takes the group away from them.
+- Groups saved on the phone before login existed are moved to the cloud, owned by the first
+  person who signs in.
+
+One-time setup:
+
+1. Create the Firestore database (production mode, region `asia-south1`) in the Firebase console.
+2. `npm install -g firebase-tools`, then `firebase login`.
+3. Deploy the security rules: `firebase deploy --only firestore` (uses `firebase.json`,
+   `firestore.rules`, `.firebaserc`).
+4. Test the rules (needs the Firebase CLI and Node 18+):
+   `cd rules_test && npm install && npm test`. Please run this once; it starts the local emulator
+   and checks who can read, write and delete.
+
+Until member voting lands (next step), members can view but not vote or change anything; the
+organiser still records votes.

@@ -3,6 +3,7 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../core/format.dart';
+import '../../core/phone.dart';
 import '../../domain/models.dart';
 import '../../domain/rules.dart';
 import '../../state/app_state.dart';
@@ -12,6 +13,7 @@ import '../sheets/member_sheet.dart';
 import '../widgets/animated_bits.dart';
 import '../widgets/common.dart';
 import 'group_dialogs.dart';
+import 'group_helpers.dart';
 
 /// "Group info": every member and every chit, with co-owners shown openly.
 class ChitsTab extends StatelessWidget {
@@ -36,8 +38,8 @@ class ChitsTab extends StatelessWidget {
           child: SectionHeader(
             'Members',
             subtitle: g.plannedMembers == null
-                ? plural(g.members.length, 'member')
-                : '${g.members.length} of ${g.plannedMembers} planned',
+                ? plural(g.activeMembers.length, 'member')
+                : '${g.activeMembers.length} of ${g.plannedMembers} planned',
             trailing: FilledButton.tonalIcon(
               key: const Key('add-member'),
               onPressed: () => showMemberSheet(context, g.id),
@@ -46,20 +48,32 @@ class ChitsTab extends StatelessWidget {
             ),
           ),
         ),
-        if (g.members.isEmpty)
+        if (g.activeMembers.isEmpty)
           const EmptyState(
             title: 'No members yet',
             message: 'Add the people in your chit group. You can always add more later.',
             icon: Icons.groups_rounded,
           ),
-        for (var i = 0; i < g.members.length; i++)
+        for (var i = 0; i < g.activeMembers.length; i++)
           FadeSlide(
             index: i,
             child: Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: _MemberTile(group: g, member: g.members[i]),
+              child: _MemberTile(group: g, member: g.activeMembers[i]),
             ),
           ),
+        if (g.formerMembers.isNotEmpty) ...<Widget>[
+          const SizedBox(height: 4),
+          const SectionHeader(
+            'Former members',
+            subtitle: 'Their chit shares stay on record. Add them back to restore them.',
+          ),
+          for (final m in g.formerMembers)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _FormerMemberTile(group: g, member: m),
+            ),
+        ],
         for (final w in warnings) ...<Widget>[
           const SizedBox(height: 4),
           NoticeBanner(
@@ -175,6 +189,56 @@ class _MemberTile extends StatelessWidget {
   }
 }
 
+class _FormerMemberTile extends StatelessWidget {
+  const _FormerMemberTile({required this.group, required this.member});
+
+  final ChitGroup group;
+  final Member member;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final chits = group.chits.where((c) => c.ownedBy(member.id)).map((c) => '${c.number}').toList();
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      child: Row(
+        children: <Widget>[
+          MemberAvatar(name: member.name, size: 40),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(member.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w800)),
+                Text(
+                  [
+                    if (member.phone != null) formatPhone(member.phone),
+                    chits.isEmpty ? 'No chit shares' : 'Chit ${chits.join(', ')}',
+                  ].join('  ·  '),
+                  style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            key: Key('restore-${member.id}'),
+            onPressed: () => runAction(
+              context,
+              group.id,
+              (g, a, actor) => a.restoreMember(g, member.id, actor: actor),
+              success: '${member.name} is back in the group.',
+            ),
+            child: const Text('Add back'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _ChitTile extends StatelessWidget {
   const _ChitTile({
     required this.group,
@@ -246,8 +310,11 @@ class _ChitTile extends StatelessWidget {
                   MemberAvatar(name: group.memberName(e.key), size: 26),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(group.memberName(e.key),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    child: Text(
+                        group.memberName(e.key) +
+                            ((group.memberById(e.key)?.left ?? false) ? ' (left)' : ''),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
                   ),
                   Text(
                     chit.isFull

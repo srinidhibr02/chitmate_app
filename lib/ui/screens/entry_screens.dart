@@ -9,6 +9,7 @@ import '../../theme/app_theme.dart';
 import '../widgets/animated_bits.dart';
 import '../widgets/common.dart';
 import 'home_screen.dart';
+import 'login_screen.dart';
 
 /// Shows the splash until the data has loaded, then either the welcome pages
 /// (first launch) or the home screen.
@@ -26,13 +27,15 @@ class _RootGateState extends State<RootGate> {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final Widget child;
-    if (!_splashDone || !state.ready) {
+    if (!_splashDone || !state.ready || !state.authReady || state.loadingGroups) {
       child = SplashScreen(
         key: const ValueKey<String>('splash'),
         onFinished: () {
           if (mounted) setState(() => _splashDone = true);
         },
       );
+    } else if (state.needsLogin) {
+      child = const LoginScreen(key: ValueKey<String>('login'));
     } else if (state.needsOnboarding) {
       child = const OnboardingScreen(key: ValueKey<String>('onboarding'));
     } else {

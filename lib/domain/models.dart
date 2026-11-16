@@ -35,22 +35,40 @@ DateTime? _dateOrNull(Object? v) =>
     v is String ? DateTime.tryParse(v) : null;
 
 class Member {
-  Member({required this.id, required this.name, this.phone});
+  Member({
+    required this.id,
+    required this.name,
+    this.phone,
+    this.left = false,
+    this.leftAt,
+  });
 
   final String id;
   String name;
+
+  /// Sign-in number in the form +91XXXXXXXXXX. It identifies the person: adding
+  /// the same number again brings back a member who left.
   String? phone;
+
+  /// True once the member has been removed from the group. Their chit shares
+  /// and payments stay on record, but they no longer vote.
+  bool left;
+  DateTime? leftAt;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
         'id': id,
         'name': name,
         'phone': phone,
+        'left': left,
+        'leftAt': leftAt?.toIso8601String(),
       };
 
   factory Member.fromJson(Map<String, dynamic> j) => Member(
         id: j['id'] as String,
         name: j['name'] as String,
         phone: j['phone'] as String?,
+        left: j['left'] == true,
+        leftAt: _dateOrNull(j['leftAt']),
       );
 }
 
@@ -278,6 +296,7 @@ class ChitGroup {
     this.firstAnnouncementDate,
     this.remindersEnabled = true,
     this.startedAt,
+    this.adminUid,
     List<Member>? members,
     List<Chit>? chits,
     List<Round>? rounds,
@@ -289,6 +308,10 @@ class ChitGroup {
 
   final String id;
   String name;
+
+  /// Sign-in id of the organiser who runs this group. Null for groups that
+  /// only exist on one phone (no login).
+  String? adminUid;
 
   /// The only mandatory field when creating a group.
   final DateTime createdAt;
@@ -330,6 +353,12 @@ class ChitGroup {
   }
 
   int get completedRounds => rounds.where((r) => r.isCompleted).length;
+
+  /// Members who are in the group now.
+  List<Member> get activeMembers => members.where((m) => !m.left).toList();
+
+  /// Members who were removed but whose shares are still on record.
+  List<Member> get formerMembers => members.where((m) => m.left).toList();
 
   Member? memberById(String id) {
     for (final m in members) {
@@ -387,6 +416,7 @@ class ChitGroup {
         'firstAnnouncementDate': firstAnnouncementDate?.toIso8601String(),
         'remindersEnabled': remindersEnabled,
         'startedAt': startedAt?.toIso8601String(),
+        'adminUid': adminUid,
         'members': members.map((m) => m.toJson()).toList(),
         'chits': chits.map((c) => c.toJson()).toList(),
         'rounds': rounds.map((r) => r.toJson()).toList(),
@@ -407,6 +437,7 @@ class ChitGroup {
       firstAnnouncementDate: _dateOrNull(j['firstAnnouncementDate']),
       remindersEnabled: (j['remindersEnabled'] as bool?) ?? true,
       startedAt: _dateOrNull(j['startedAt']),
+      adminUid: j['adminUid'] as String?,
       members: list('members', Member.fromJson),
       chits: list('chits', Chit.fromJson),
       rounds: list('rounds', Round.fromJson),

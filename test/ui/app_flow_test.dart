@@ -146,4 +146,28 @@ void main() {
     expect(chit.isFull, isFalse);
     expect(RoundMethod.values.length, 3);
   });
+
+  testWidgets('a member who left can be added back from the Chits tab', (tester) async {
+    final s = await readyState();
+    final id = s.groups.first.id;
+    await s.run(id, (g) {
+      final ravi = g.members.firstWhere((m) => m.name == 'Ravi');
+      s.actions.addChit(g, <String, int>{ravi.id: 10000}, actor: 'Asha');
+      s.actions.removeMember(g, ravi.id, actor: 'Asha');
+    });
+    expect(s.groupById(id)!.formerMembers.single.name, 'Ravi');
+
+    await tester.pumpWidget(ChitMateApp(state: s));
+    await tester.pumpAndSettle(const Duration(seconds: 1));
+    await tester.tap(find.text('Friends').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chits').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Former members'), findsOneWidget);
+
+    await tester.tap(find.text('Add back'));
+    await tester.pumpAndSettle();
+    expect(s.groupById(id)!.formerMembers, isEmpty);
+    expect(find.text('Former members'), findsNothing);
+  });
 }
