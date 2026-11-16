@@ -5,6 +5,7 @@
 /// is broken half-way through a change, the group is rolled back untouched.
 library;
 
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
@@ -12,12 +13,14 @@ import 'package:flutter/widgets.dart';
 import '../data/repository.dart';
 import '../domain/actions.dart';
 import '../domain/models.dart';
+import '../services/auth_service.dart';
 import '../services/reminders.dart';
 
 class AppState extends ChangeNotifier {
   AppState({
     required ChitRepository repository,
     ReminderService? reminders,
+    this.auth,
     ChitActions? actions,
     DateTime Function()? clock,
   })  : _repository = repository,
@@ -26,6 +29,9 @@ class AppState extends ChangeNotifier {
         _clock = clock ?? DateTime.now;
 
   final ChitRepository _repository;
+
+  /// Phone sign-in. Null means the app runs without a login (tests, local use).
+  final AuthService? auth;
   final ReminderService _reminders;
   final DateTime Function() _clock;
 
@@ -33,6 +39,9 @@ class AppState extends ChangeNotifier {
   final ChitActions actions;
 
   bool _ready = false;
+  bool _authReady = false;
+  AppUser? _user;
+  StreamSubscription<AppUser?>? _authSub;
   Profile? _profile;
   final List<ChitGroup> _groups = <ChitGroup>[];
   String? _notice;
@@ -43,6 +52,15 @@ class AppState extends ChangeNotifier {
   bool get ready => _ready;
 
   Profile? get profile => _profile;
+
+  /// The signed-in person, if sign-in is in use.
+  AppUser? get user => _user;
+
+  /// True once we know whether someone is already signed in.
+  bool get authReady => auth == null || _authReady;
+
+  /// True when sign-in is in use and nobody is signed in.
+  bool get needsLogin => auth != null && _user == null;
 
   /// Name used as the author of changes ("Admin" until the person sets one).
   String get adminName {
@@ -63,6 +81,21 @@ class AppState extends ChangeNotifier {
   DateTime get now => _clock();
 
   Future<void> init() async {
+    final a = auth;
+    if (a != null) {
+      _authSub = a.userChanges.listen((u) {
+        _user = u;
+        _authReady = true;
+        notifyListeners();
+      });
+      try {
+        _user = await a.userChanges.first.timeout(const Duration(seconds: 8));
+        _authReady = true;
+      } catch (_) {
+        _user = a.currentUser;
+        _authReady = true;
+      }
+    }
     await _reminders.init();
     try {
       final data = await _repository.load();
@@ -79,6 +112,17 @@ class AppState extends ChangeNotifier {
     _ready = true;
     notifyListeners();
     await _syncReminders();
+  }
+
+  /// Signs out. The saved data on this phone is kept.
+  Future<void> signOut() async {
+    await auth?.signOut();
+  }
+
+  @override
+  void dispose() {
+    _authSub?.cancel();
+    super.dispose();
   }
 
   void clearNotice() {

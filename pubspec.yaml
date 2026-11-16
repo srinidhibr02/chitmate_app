@@ -15,6 +15,10 @@ dependencies:
   # zonedSchedule / initialize signatures changed in later majors.
   flutter_local_notifications: ^19.5.0
   timezone: ^0.10.1
+  # Firebase (login now, shared data later). Versions are resolved by
+  # `flutter pub get`; pin them in pubspec.lock once the app builds.
+  firebase_core: any
+  firebase_auth: any
 
 dev_dependencies:
   flutter_test:

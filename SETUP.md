@@ -70,3 +70,25 @@ lib/ui       screens, sheets, widgets, animations
 test         rules, actions, state, reminders, widget flows
 tool         verify.sh, simulate_rules.py
 ```
+
+## 5. Firebase login (phone OTP)
+
+Login uses Firebase Authentication. Until Firebase is configured the app still runs,
+on the device only and without a login.
+
+1. In the Firebase console: Authentication → Sign-in method → turn on **Phone**. Add one or two
+   **test phone numbers** with fixed codes for development (no real SMS is sent for those).
+2. Install the tools once: `dart pub global activate flutterfire_cli` (and the Firebase CLI).
+3. In the project folder run `flutterfire configure`, choose your project and the Android (and
+   Web) platforms. This **replaces `lib/firebase_options.dart`** with your real settings.
+4. Add your Android **SHA-1 and SHA-256** fingerprints under Project settings → your Android app
+   (debug: `cd android && ./gradlew signingReport`; later also the Play app-signing key). Phone
+   sign-in will not verify without them.
+5. `flutter pub get`, then `flutter run`. Sign in once; the session is kept, so the login screen
+   only appears again after signing out.
+
+For the web build, add your Firebase Hosting domain under Authentication → Settings →
+Authorized domains.
+
+Note: until step 2 of the roadmap (Firestore) lands, group data is still stored on the device,
+so signing in as a different person on the same phone shows the same local data.

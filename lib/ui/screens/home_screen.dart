@@ -329,6 +329,20 @@ class _ProfileSheetState extends State<_ProfileSheet> {
     navigator.pop();
   }
 
+  Future<void> _signOut() async {
+    final state = AppScope.of(context);
+    final navigator = Navigator.of(context);
+    final ok = await confirmDialog(
+      context,
+      title: 'Sign out?',
+      message: 'You will need a new code to sign in again.',
+      confirmLabel: 'Sign out',
+    );
+    if (!ok) return;
+    navigator.pop();
+    await state.signOut();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -359,6 +373,22 @@ class _ProfileSheetState extends State<_ProfileSheet> {
             width: double.infinity,
             child: FilledButton(onPressed: _save, child: const Text('Save')),
           ),
+          if (AppScope.of(context).auth != null) ...<Widget>[
+            const SizedBox(height: 8),
+            Text(
+              'Signed in as ${AppScope.of(context).user?.phone ?? ''}',
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+            ),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                key: const Key('sign-out'),
+                onPressed: _signOut,
+                icon: const Icon(Icons.logout_rounded),
+                label: const Text('Sign out'),
+              ),
+            ),
+          ],
         ],
       ),
     );
