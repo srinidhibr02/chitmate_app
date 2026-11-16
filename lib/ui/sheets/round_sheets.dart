@@ -161,7 +161,7 @@ class _VoteSheetState extends State<_VoteSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          Text(t.id == voterId ? '${t.name} (themselves)' : t.name,
+                          Text(t.id == voterId ? '${t.name} (themselves)' : (t.left ? '${t.name} (left)' : t.name),
                               style: const TextStyle(fontWeight: FontWeight.w700)),
                           Text(
                             'Can win: ${chits.map((c) => 'Chit ${c.number}').join(', ')}',

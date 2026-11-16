@@ -126,7 +126,7 @@ class Notices {
     b.writeln('Monthly dues:');
     for (final m in g.members) {
       final due = Rules.monthlyDue(g, m.id);
-      if (due > 0) b.writeln('- ${m.name}: ${rupees(due)}');
+      if (due > 0) b.writeln('- ${m.name}${m.left ? ' (left)' : ''}: ${rupees(due)}');
     }
     return b.toString().trimRight();
   }

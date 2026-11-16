@@ -74,16 +74,15 @@ void main() {
       final a = testActions();
       final b = example1(a);
       final g = b.group;
-      final extra = a.addMember(g, '  Meena  ', phone: ' 98765 ', actor: 'Admin');
+      final extra = a.addMember(g, '  Meena  ', phone: ' 98765 43210 ', actor: 'Admin');
       expect(extra.name, 'Meena');
-      expect(extra.phone, '98765');
+      expect(extra.phone, '+919876543210');
       expect(() => a.addMember(g, 'meena', actor: 'Admin'), violation('already in this group'));
       expect(() => a.addMember(g, '', actor: 'Admin'), violation());
       a.renameMember(g, extra.id, 'Meenakshi', actor: 'Admin');
       expect(g.memberById(extra.id)!.name, 'Meenakshi');
       expect(() => a.renameMember(g, extra.id, 'A', actor: 'Admin'), violation('already in this group'));
-      // A owns chits, so cannot leave; Meenakshi owns nothing, so can.
-      expect(() => a.removeMember(g, b.id('A'), actor: 'Admin'), violation('owns a share'));
+      // Meenakshi owns nothing and has no history, so she is simply deleted.
       a.removeMember(g, extra.id, actor: 'Admin');
       expect(g.memberById(extra.id), isNull);
     });
@@ -196,12 +195,15 @@ void main() {
           violation('already won'));
     });
 
-    test('members cannot be removed once they appear in the history', () {
+    test('members with history are marked as left, not deleted', () {
       final a = testActions();
       final b = example1(a, start: true);
       final g = b.group;
       a.recordPayment(g, 0, memberId: b.id('D'), amount: 1000, actor: 'Admin');
-      expect(() => a.removeMember(g, b.id('D'), actor: 'Admin'), violation());
+      a.removeMember(g, b.id('D'), actor: 'Admin');
+      expect(g.memberById(b.id('D')), isNotNull);
+      expect(g.memberById(b.id('D'))!.left, isTrue);
+      expect(Rules.paidBy(g.rounds[0], b.id('D')), 1000);
     });
   });
 

@@ -40,6 +40,7 @@ class _ChitEditorScreenState extends State<ChitEditorScreen> {
     final chit = widget.chitId == null ? null : g.chitById(widget.chitId!);
     for (final m in g.members) {
       final share = chit?.shares[m.id];
+      if (m.left && share == null) continue;
       _amounts[m.id] = TextEditingController(text: share == null ? '' : '$share');
       if (share != null) _checked.add(m.id);
     }
@@ -67,7 +68,8 @@ class _ChitEditorScreenState extends State<ChitEditorScreen> {
   int _total() => _shares().values.fold<int>(0, (a, b) => a + b);
 
   void _splitEqually(ChitGroup g) {
-    final ids = g.members.where((m) => _checked.contains(m.id)).map((m) => m.id).toList();
+    final chit = widget.chitId == null ? null : g.chitById(widget.chitId!);
+    final ids = _choosable(g, chit).where((m) => _checked.contains(m.id)).map((m) => m.id).toList();
     final value = g.chitValue ?? 0;
     final parts = Rules.equalSplit(value, ids.length);
     setState(() {
@@ -86,6 +88,12 @@ class _ChitEditorScreenState extends State<ChitEditorScreen> {
       _amounts[id]!.text = rest > 0 ? '$rest' : '';
     });
   }
+
+  /// Members who can be chosen as owners: everyone in the group, plus anyone
+  /// who left but still holds a share of this chit.
+  List<Member> _choosable(ChitGroup g, Chit? chit) => g.members
+      .where((m) => !m.left || (chit?.ownedBy(m.id) ?? false))
+      .toList();
 
   Future<void> _save(ChitGroup g) async {
     final navigator = Navigator.of(context);
@@ -223,13 +231,13 @@ class _ChitEditorScreenState extends State<ChitEditorScreen> {
                       label: const Text('Split equally'),
                     ),
                   ),
-                  if (g.members.isEmpty)
+                  if (_choosable(g, chit).isEmpty)
                     const NoticeBanner(text: 'Add members first, then come back to create chits.'),
-                  for (final m in g.members)
+                  for (final m in _choosable(g, chit))
                     Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: _OwnerRow(
-                        name: m.name,
+                        name: m.left ? '${m.name} (left)' : m.name,
                         checked: _checked.contains(m.id),
                         controller: _amounts[m.id]!,
                         onChecked: (v) => setState(() {

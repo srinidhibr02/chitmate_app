@@ -1,7 +1,9 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../core/phone.dart';
 import '../../domain/actions.dart';
 import '../../domain/models.dart';
 import '../../state/app_state.dart';
@@ -26,7 +28,8 @@ class _MemberSheet extends StatefulWidget {
 
 class _MemberSheetState extends State<_MemberSheet> {
   late final TextEditingController _name = TextEditingController(text: widget.member?.name ?? '');
-  late final TextEditingController _phone = TextEditingController(text: widget.member?.phone ?? '');
+  late final TextEditingController _phone = TextEditingController(
+      text: normalizeIndianMobile(widget.member?.phone ?? '')?.substring(3) ?? '');
   String? _error;
   bool _busy = false;
 
@@ -70,7 +73,11 @@ class _MemberSheetState extends State<_MemberSheet> {
     final ok = await confirmDialog(
       context,
       title: 'Remove ${member.name}?',
-      message: 'They will leave the group. This is only possible when they own no share of any chit.',
+      message: member.phone == null
+          ? 'They will leave the group. Their chit shares stay on record, and you can add '
+              'them back later from the former members list.'
+          : 'They will leave the group. Their chit shares stay on record. Adding this phone '
+              'number again restores them exactly as they were.',
       confirmLabel: 'Remove',
       destructive: true,
     );
@@ -112,8 +119,14 @@ class _MemberSheetState extends State<_MemberSheet> {
           TextField(
             controller: _phone,
             keyboardType: TextInputType.phone,
-            maxLength: 20,
-            decoration: appInput(context, label: 'Phone (optional)'),
+            maxLength: 10,
+            inputFormatters: <TextInputFormatter>[FilteringTextInputFormatter.digitsOnly],
+            decoration: appInput(
+              context,
+              label: 'Mobile number',
+              prefixText: '+91  ',
+              helper: 'They sign in with this number to see the group and vote.',
+            ).copyWith(counterText: ''),
           ),
           if (_error != null) ...<Widget>[
             const SizedBox(height: 4),
@@ -127,7 +140,7 @@ class _MemberSheetState extends State<_MemberSheet> {
               child: Text(_editing ? 'Save' : 'Add member'),
             ),
           ),
-          if (_editing && group != null && group.members.length > 1) ...<Widget>[
+          if (_editing && group != null && !(widget.member?.left ?? false) && group.activeMembers.length > 1) ...<Widget>[
             const SizedBox(height: 8),
             SizedBox(
               width: double.infinity,

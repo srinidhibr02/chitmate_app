@@ -35,22 +35,40 @@ DateTime? _dateOrNull(Object? v) =>
     v is String ? DateTime.tryParse(v) : null;
 
 class Member {
-  Member({required this.id, required this.name, this.phone});
+  Member({
+    required this.id,
+    required this.name,
+    this.phone,
+    this.left = false,
+    this.leftAt,
+  });
 
   final String id;
   String name;
+
+  /// Sign-in number in the form +91XXXXXXXXXX. It identifies the person: adding
+  /// the same number again brings back a member who left.
   String? phone;
+
+  /// True once the member has been removed from the group. Their chit shares
+  /// and payments stay on record, but they no longer vote.
+  bool left;
+  DateTime? leftAt;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
         'id': id,
         'name': name,
         'phone': phone,
+        'left': left,
+        'leftAt': leftAt?.toIso8601String(),
       };
 
   factory Member.fromJson(Map<String, dynamic> j) => Member(
         id: j['id'] as String,
         name: j['name'] as String,
         phone: j['phone'] as String?,
+        left: j['left'] == true,
+        leftAt: _dateOrNull(j['leftAt']),
       );
 }
 
@@ -330,6 +348,12 @@ class ChitGroup {
   }
 
   int get completedRounds => rounds.where((r) => r.isCompleted).length;
+
+  /// Members who are in the group now.
+  List<Member> get activeMembers => members.where((m) => !m.left).toList();
+
+  /// Members who were removed but whose shares are still on record.
+  List<Member> get formerMembers => members.where((m) => m.left).toList();
 
   Member? memberById(String id) {
     for (final m in members) {

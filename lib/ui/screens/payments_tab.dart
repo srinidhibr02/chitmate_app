@@ -163,7 +163,8 @@ class _PaymentsTabState extends State<PaymentsTab> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            Text(m.name, style: const TextStyle(fontWeight: FontWeight.w800)),
+                            Text(m.left ? '${m.name} (left)' : m.name,
+                                style: const TextStyle(fontWeight: FontWeight.w800)),
                             Text('${rupees(paid)} of ${rupees(due)}',
                                 style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
                           ],

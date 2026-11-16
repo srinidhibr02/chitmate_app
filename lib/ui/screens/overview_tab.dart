@@ -45,8 +45,8 @@ class OverviewTab extends StatelessWidget {
         g.chits.every((c) => Rules.sharesError(g, c.shares) == null);
     final planned = g.plannedMembers;
     final memberText = planned == null
-        ? plural(g.members.length, 'member')
-        : '${g.members.length} of $planned members';
+        ? plural(g.activeMembers.length, 'member')
+        : '${g.activeMembers.length} of $planned members';
     return <Widget>[
       FadeSlide(
         child: HeroCard(
@@ -97,7 +97,7 @@ class OverviewTab extends StatelessWidget {
                 onAction: () => editChitValue(context, g),
               ),
               _StepRow(
-                done: g.members.length >= 2,
+                done: g.activeMembers.length >= 2,
                 title: 'Members',
                 subtitle: memberText,
                 action: 'Add',
@@ -243,7 +243,7 @@ class OverviewTab extends StatelessWidget {
                       sub: cur == null ? null : countdownText(cur.announcementDate, now),
                     ),
                   ),
-                  Expanded(child: _MiniStat(label: 'Members', value: '${g.members.length}')),
+                  Expanded(child: _MiniStat(label: 'Members', value: '${g.activeMembers.length}')),
                   Expanded(child: _MiniStat(label: 'Chits left', value: '$remaining')),
                 ],
               ),

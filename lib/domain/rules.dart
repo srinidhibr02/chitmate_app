@@ -247,6 +247,7 @@ class Rules {
   /// shared chits gets one; anyone else gets none. Shares never add votes on
   /// top of full chits.
   static int votingPower(ChitGroup g, String memberId) {
+    if (g.memberById(memberId)?.left ?? false) return 0;
     final full = fullChitCount(g, memberId);
     if (full > 0) return full;
     final hasShare = g.chits.any((c) => c.ownedBy(memberId));
@@ -282,6 +283,7 @@ class Rules {
     final target = g.memberById(targetId);
     if (voter == null || target == null) return 'Unknown member.';
     final power = votingPower(g, voterId);
+    if (voter.left) return '${voter.name} has left the group, so no vote.';
     if (power == 0) return '${voter.name} has no chit, so no vote.';
     final mine = r.votes.where((v) => v.voterId == voterId).toList();
     if (mine.length >= power) {
@@ -376,15 +378,16 @@ class Rules {
     if (g.firstAnnouncementDate == null) {
       issues.add(const ReadinessIssue('Pick the first announcement date.'));
     }
-    for (final m in g.members) {
+    for (final m in g.activeMembers) {
       if (!g.chits.any((c) => c.ownedBy(m.id))) {
         issues.add(ReadinessIssue('${m.name} has no chit yet.', blocking: false));
       }
     }
     final planned = g.plannedMembers;
-    if (planned != null && planned != g.members.length) {
+    final activeCount = g.activeMembers.length;
+    if (planned != null && planned != activeCount) {
       issues.add(ReadinessIssue(
-        'You planned ${plural(planned, 'member')} and have ${g.members.length}.',
+        'You planned ${plural(planned, 'member')} and have $activeCount.',
         blocking: false,
       ));
     }
