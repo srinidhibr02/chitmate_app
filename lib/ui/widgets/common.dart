@@ -28,7 +28,11 @@ class AppLogo extends StatelessWidget {
           gradient: AppColors.hero,
           borderRadius: BorderRadius.circular(size * 0.22),
         ),
-        child: Icon(Icons.groups_rounded, color: Colors.white, size: size * 0.5),
+        child: Icon(
+          Icons.groups_rounded,
+          color: Colors.white,
+          size: size * 0.5,
+        ),
       ),
     );
     if (!hero) return image;
@@ -76,10 +80,17 @@ class MemberAvatar extends StatelessWidget {
       width: size,
       height: size,
       alignment: Alignment.center,
-      decoration: BoxDecoration(color: color.withAlpha(34), shape: BoxShape.circle),
+      decoration: BoxDecoration(
+        color: color.withAlpha(34),
+        shape: BoxShape.circle,
+      ),
       child: Text(
         initialOf(name),
-        style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: size * 0.42),
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w800,
+          fontSize: size * 0.42,
+        ),
       ),
     );
   }
@@ -110,7 +121,11 @@ class Pill extends StatelessWidget {
           ],
           Text(
             label,
-            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -156,7 +171,11 @@ class AppCard extends StatelessWidget {
 
 /// A teal gradient card with light text, used for the main summary.
 class HeroCard extends StatelessWidget {
-  const HeroCard({super.key, required this.child, this.padding = const EdgeInsets.all(20)});
+  const HeroCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(20),
+  });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -207,13 +226,23 @@ class SectionHeader extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(title, style: text.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                Text(
+                  title,
+                  style: text.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 if (subtitle != null)
-                  Text(subtitle!, style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
+                  Text(
+                    subtitle!,
+                    style: text.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
               ],
             ),
           ),
-          if (trailing != null) trailing!,
+          ?trailing,
         ],
       ),
     );
@@ -254,8 +283,14 @@ class NoticeBanner extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(text, style: TextStyle(color: scheme.onSurface, height: 1.35)),
-                if (action != null) ...<Widget>[const SizedBox(height: 8), action!],
+                Text(
+                  text,
+                  style: TextStyle(color: scheme.onSurface, height: 1.35),
+                ),
+                if (action != null) ...<Widget>[
+                  const SizedBox(height: 8),
+                  action!,
+                ],
               ],
             ),
           ),
@@ -304,14 +339,24 @@ class EmptyState extends StatelessWidget {
                 child: Icon(icon, size: 40, color: scheme.primary),
               ),
             const SizedBox(height: 20),
-            Text(title,
-                textAlign: TextAlign.center,
-                style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: text.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 8),
-            Text(message,
-                textAlign: TextAlign.center,
-                style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant, height: 1.4)),
-            if (action != null) ...<Widget>[const SizedBox(height: 24), action!],
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: text.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                height: 1.4,
+              ),
+            ),
+            if (action != null) ...<Widget>[
+              const SizedBox(height: 24),
+              action!,
+            ],
           ],
         ),
       ),
@@ -326,11 +371,16 @@ void showSnack(BuildContext context, String message, {bool error = false}) {
   final scheme = Theme.of(context).colorScheme;
   messenger
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(
-      content: Text(message, style: TextStyle(color: error ? scheme.onError : null)),
-      backgroundColor: error ? scheme.error : null,
-      duration: Duration(seconds: error ? 5 : 3),
-    ));
+    ..showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: TextStyle(color: error ? scheme.onError : null),
+        ),
+        backgroundColor: error ? scheme.error : null,
+        duration: Duration(seconds: error ? 5 : 3),
+      ),
+    );
 }
 
 /// Asks a yes/no question. Returns true only when confirmed.
@@ -350,10 +400,16 @@ Future<bool> confirmDialog(
         title: Text(title),
         content: Text(message),
         actions: <Widget>[
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           FilledButton(
             style: destructive
-                ? FilledButton.styleFrom(backgroundColor: scheme.error, foregroundColor: scheme.onError)
+                ? FilledButton.styleFrom(
+                    backgroundColor: scheme.error,
+                    foregroundColor: scheme.onError,
+                  )
                 : null,
             onPressed: () => Navigator.pop(ctx, true),
             child: Text(confirmLabel),
@@ -372,11 +428,16 @@ Route<T> softRoute<T>(Widget page) {
     reverseTransitionDuration: const Duration(milliseconds: 260),
     pageBuilder: (context, animation, secondary) => page,
     transitionsBuilder: (context, animation, secondary, child) {
-      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      final curved = CurvedAnimation(
+        parent: animation,
+        curve: Curves.easeOutCubic,
+      );
       return FadeTransition(
         opacity: curved,
         child: SlideTransition(
-          position: curved.drive(Tween<Offset>(begin: const Offset(0.06, 0), end: Offset.zero)),
+          position: curved.drive(
+            Tween<Offset>(begin: const Offset(0.06, 0), end: Offset.zero),
+          ),
           child: child,
         ),
       );
