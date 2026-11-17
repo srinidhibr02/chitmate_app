@@ -56,7 +56,7 @@ service. Money between group members is arranged and paid outside the app.
 **Category:** Finance (Productivity is also fine for a tracker; Finance is the more accurate
 one). **Tags:** pick what Play offers for "Personal finance" / "Budgeting".
 
-**Contact details:** email `srinidhibr02@gmail.com`; website `https://chitmate-e04dd.web.app`;
+**Contact details:** email `zerolpa2022@gmail.com`; website `https://chitmate-e04dd.web.app`;
 privacy policy `https://chitmate-e04dd.web.app/privacy.html`. Phone is optional.
 
 **Graphics**
