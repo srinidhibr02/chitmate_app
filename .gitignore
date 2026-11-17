@@ -9,3 +9,6 @@ build/
 pubspec.lock
 android/local.properties
 ios/Pods/
+
+# Node tooling (Firebase CLI / rules tests)
+node_modules/
