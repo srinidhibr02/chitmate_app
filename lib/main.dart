@@ -19,9 +19,7 @@ Future<void> main() async {
   AuthService? auth;
   CloudGroupStore? cloud;
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    await _initFirebase();
     auth = FirebaseAuthService();
     cloud = FirestoreGroupStore();
   } catch (e) {
@@ -37,4 +35,18 @@ Future<void> main() async {
   runApp(ChitMateApp(state: state));
   // Loading continues behind the animated splash screen.
   await state.init();
+}
+
+/// Starts Firebase. Uses lib/firebase_options.dart when `flutterfire configure`
+/// has generated it. Otherwise falls back to the settings the build already
+/// carries (android/app/google-services.json on Android, GoogleService-Info.plist
+/// on iOS), so login works on a phone before that file exists.
+Future<void> _initFirebase() async {
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } on UnsupportedError {
+    await Firebase.initializeApp();
+  }
 }
