@@ -1,5 +1,5 @@
 /// Small reusable animations: staggered entrances, counting numbers, a
-/// progress ring, confetti and a "draw reel" for the random pick.
+/// progress ring, and confetti.
 library;
 
 import 'dart:math';
@@ -268,94 +268,4 @@ class _ConfettiPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ConfettiPainter old) => old.t != t;
-}
-
-/// A slot-machine style reel that cycles through [candidates], slows down and
-/// lands on [winner]. Calls [onFinished] exactly once when it stops.
-class DrawReel extends StatefulWidget {
-  const DrawReel({
-    super.key,
-    required this.candidates,
-    required this.winner,
-    required this.onFinished,
-    this.duration = const Duration(milliseconds: 3400),
-  });
-
-  final List<String> candidates;
-  final String winner;
-  final VoidCallback onFinished;
-  final Duration duration;
-
-  @override
-  State<DrawReel> createState() => _DrawReelState();
-}
-
-class _DrawReelState extends State<DrawReel> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final List<String> _sequence;
-  bool _finished = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final others = widget.candidates.where((c) => c != widget.winner).toList();
-    final pool = others.isEmpty ? <String>[widget.winner] : others;
-    const steps = 30;
-    _sequence = <String>[
-      for (var i = 0; i < steps; i++) pool[i % pool.length],
-      widget.winner,
-    ];
-    _controller = AnimationController(vsync: this, duration: widget.duration)
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed && !_finished) {
-          _finished = true;
-          widget.onFinished();
-        }
-      })
-      ..forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final eased = Curves.easeOutQuart.transform(_controller.value);
-        final index = min((eased * _sequence.length).floor(), _sequence.length - 1);
-        final done = _controller.isCompleted;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-          decoration: BoxDecoration(
-            color: done ? scheme.tertiary.withAlpha(46) : scheme.primary.withAlpha(24),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: done ? scheme.tertiary : scheme.primary.withAlpha(90), width: 2),
-          ),
-          child: Center(
-            child: AnimatedScale(
-              scale: done ? 1.12 : 1.0,
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeOutBack,
-              child: Text(
-                _sequence[index],
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: scheme.onSurface,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
 }

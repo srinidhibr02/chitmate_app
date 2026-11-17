@@ -7,6 +7,7 @@ import '../../domain/models.dart';
 import '../../domain/rules.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/animated_bits.dart';
+import '../widgets/draw_wheel.dart';
 
 /// Announces who won a month. With [reelCandidates] the winner is revealed
 /// by the draw reel first; otherwise the result shows straight away.
@@ -70,9 +71,8 @@ class _ResultDialogState extends State<_ResultDialog> {
                 ),
                 const SizedBox(height: 16),
                 if (reel != null && reel.length >= 2)
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: 120),
-                    child: DrawReel(
+                  Center(
+                    child: DrawWheel(
                       candidates: reel,
                       winner: label,
                       onFinished: () {
