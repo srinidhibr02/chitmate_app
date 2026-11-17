@@ -12,3 +12,8 @@ ios/Pods/
 
 # Node tooling (Firebase CLI / rules tests)
 node_modules/
+
+# Release signing (keep these private and backed up)
+android/key.properties
+*.jks
+*.keystore
