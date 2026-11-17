@@ -1,5 +1,4 @@
 import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'app.dart';
@@ -20,7 +19,9 @@ Future<void> main() async {
   AuthService? auth;
   CloudGroupStore? cloud;
   try {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     auth = FirebaseAuthService();
     cloud = FirestoreGroupStore();
   } catch (e) {
