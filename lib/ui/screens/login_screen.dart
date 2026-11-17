@@ -67,7 +67,8 @@ class _LoginScreenState extends State<LoginScreen> {
         _busy = false;
         _error = e.message;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Sending the code failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
@@ -101,7 +102,8 @@ class _LoginScreenState extends State<LoginScreen> {
         _busy = false;
         _error = e.message;
       });
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Checking the code failed: $e');
       if (!mounted) return;
       setState(() {
         _busy = false;
