@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:588422430459:android:d363265f5ee24872183a5e",
+        "mobilesdk_app_id": "1:588422430459:android:f83c6fb712694f6e183a5e",
         "android_client_info": {
-          "package_name": "com.example.chit_mate"
+          "package_name": "app.zerolpa.chit_mate"
         }
       },
       "oauth_client": [],
