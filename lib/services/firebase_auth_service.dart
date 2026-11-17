@@ -103,6 +103,17 @@ class FirebaseAuthService implements AuthService {
   @override
   Future<void> signOut() => _auth.signOut();
 
+  @override
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) throw const AuthException('You are not signed in.');
+    try {
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      throw AuthException(friendlyMessage(e.code));
+    }
+  }
+
   /// Turns Firebase error codes into plain language.
   static String friendlyMessage(String code) {
     switch (code) {
@@ -117,6 +128,9 @@ class FirebaseAuthService implements AuthService {
         return 'Too many attempts. Please wait a while and try again.';
       case 'operation-not-allowed':
         return 'Phone sign-in is not turned on for this app yet.';
+      case 'requires-recent-login':
+        return 'For your safety, sign out, sign in again with a new code, and then delete '
+            'your account straight away.';
       case 'quota-exceeded':
         return 'We cannot send more codes right now. Please try again later.';
       case 'network-request-failed':

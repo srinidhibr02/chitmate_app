@@ -300,6 +300,7 @@ class _ProfileSheet extends StatefulWidget {
 class _ProfileSheetState extends State<_ProfileSheet> {
   late final TextEditingController _name;
   String? _error;
+  String? _deleteError;
   bool _initialised = false;
 
   @override
@@ -341,6 +342,29 @@ class _ProfileSheetState extends State<_ProfileSheet> {
     if (!ok) return;
     navigator.pop();
     await state.signOut();
+  }
+
+  Future<void> _deleteAccount() async {
+    final state = AppScope.of(context);
+    final navigator = Navigator.of(context);
+    final ok = await confirmDialog(
+      context,
+      title: 'Delete your account?',
+      message: 'This permanently deletes your sign-in and every group you organise, '
+          'with its members, chits, votes and results. Groups you only belong to are '
+          'not affected. This cannot be undone.',
+      confirmLabel: 'Delete everything',
+      destructive: true,
+    );
+    if (!ok || !mounted) return;
+    setState(() => _deleteError = null);
+    final err = await state.deleteAccount();
+    if (!mounted) return;
+    if (err != null) {
+      setState(() => _deleteError = err);
+      return;
+    }
+    navigator.pop();
   }
 
   @override
@@ -388,6 +412,24 @@ class _ProfileSheetState extends State<_ProfileSheet> {
                 label: const Text('Sign out'),
               ),
             ),
+            SizedBox(
+              width: double.infinity,
+              child: TextButton.icon(
+                key: const Key('delete-account'),
+                onPressed: _deleteAccount,
+                icon: Icon(Icons.delete_forever_rounded,
+                    color: Theme.of(context).colorScheme.error),
+                label: Text('Delete account',
+                    style: TextStyle(color: Theme.of(context).colorScheme.error)),
+              ),
+            ),
+            if (_deleteError != null)
+              NoticeBanner(
+                key: const Key('delete-error'),
+                text: _deleteError!,
+                icon: Icons.error_outline_rounded,
+                color: Theme.of(context).colorScheme.error,
+              ),
           ],
         ],
       ),

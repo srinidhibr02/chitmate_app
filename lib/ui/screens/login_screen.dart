@@ -2,7 +2,9 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../../core/links.dart';
 import '../../services/auth_service.dart';
 import '../../state/app_state.dart';
 import '../../theme/app_theme.dart';
@@ -75,6 +77,17 @@ class _LoginScreenState extends State<LoginScreen> {
         _error = 'Could not send the code. Check your connection and try again.';
       });
     }
+  }
+
+  Future<void> _openPrivacyPolicy() async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final ok = await launchUrl(Uri.parse(kPrivacyPolicyUrl), mode: LaunchMode.externalApplication);
+      if (ok) return;
+    } catch (e) {
+      debugPrint('Could not open the privacy policy: $e');
+    }
+    messenger.showSnackBar(const SnackBar(content: Text('Could not open the page. Visit $kPrivacyPolicyUrl')));
   }
 
   Future<void> _verify() async {
@@ -178,6 +191,19 @@ class _LoginScreenState extends State<LoginScreen> {
                     'or sends money.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12, height: 1.4),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'By continuing, you agree that ChitMate uses your mobile number to '
+                    'sign you in and to show you the groups you belong to.',
+                    key: const Key('consent-text'),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12, height: 1.4),
+                  ),
+                  TextButton(
+                    key: const Key('privacy-link'),
+                    onPressed: _openPrivacyPolicy,
+                    child: const Text('Read the privacy policy'),
                   ),
                 ],
               ),

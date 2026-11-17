@@ -222,6 +222,41 @@ class AppState extends ChangeNotifier {
     await auth?.signOut();
   }
 
+  /// Deletes the account: every group the person organises, the sign-in itself
+  /// and everything saved on this phone. Returns a message if it did not work,
+  /// otherwise null. Safe to run again after a failure.
+  Future<String?> deleteAccount() async {
+    final a = auth;
+    final u = _user;
+    if (a == null || u == null) return 'You are not signed in.';
+    try {
+      final c = cloud;
+      if (c != null) {
+        await flush();
+        final mine = <String>[
+          for (final g in _groups)
+            if (g.adminUid == u.uid) g.id,
+        ];
+        for (final id in mine) {
+          await c.deleteGroup(id);
+        }
+      }
+      await a.deleteAccount();
+    } on AuthException catch (e) {
+      return e.message;
+    } catch (_) {
+      return 'Could not delete your account. Check your connection and try again.';
+    }
+    _localOnly.clear();
+    _groups.clear();
+    _profile = null;
+    _notice = null;
+    _saveProblem = null;
+    notifyListeners();
+    await _persist();
+    return null;
+  }
+
   @override
   void dispose() {
     _authSub?.cancel();

@@ -56,6 +56,10 @@ abstract class AuthService {
   Future<AppUser> confirmCode(PhoneChallenge challenge, String code);
 
   Future<void> signOut();
+
+  /// Permanently deletes the signed-in account. May throw [AuthException],
+  /// for example when the sign-in is too old and a fresh code is needed.
+  Future<void> deleteAccount();
 }
 
 /// In-memory sign-in for tests and local runs.
@@ -71,6 +75,12 @@ class FakeAuthService implements AuthService {
 
   /// When set, [sendCode] fails with this message.
   String? sendFailure;
+
+  /// When set, [deleteAccount] fails with this message.
+  String? deleteFailure;
+
+  /// How many accounts have been deleted.
+  int deleted = 0;
 
   @override
   AppUser? get currentUser => _user;
@@ -102,6 +112,15 @@ class FakeAuthService implements AuthService {
 
   @override
   Future<void> signOut() async {
+    _user = null;
+    _controller.add(null);
+  }
+
+  @override
+  Future<void> deleteAccount() async {
+    final failure = deleteFailure;
+    if (failure != null) throw AuthException(failure);
+    deleted++;
     _user = null;
     _controller.add(null);
   }

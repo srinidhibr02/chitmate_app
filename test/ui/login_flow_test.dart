@@ -56,6 +56,8 @@ void main() {
     await tester.pumpAndSettle(const Duration(seconds: 1));
 
     expect(find.text('Welcome to ChitMate'), findsOneWidget);
+    expect(find.byKey(const Key('consent-text')), findsOneWidget);
+    expect(find.byKey(const Key('privacy-link')), findsOneWidget);
 
     // Too short.
     await tester.enterText(find.byKey(const Key('phone-field')), '12345');

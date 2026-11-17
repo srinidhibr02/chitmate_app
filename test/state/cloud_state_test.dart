@@ -220,4 +220,60 @@ void main() {
     expect(s.groups, isEmpty);
     expect(RoundMethod.values, isNotEmpty);
   });
+
+  test('deleting the account removes the groups you organise, the sign-in and local data', () async {
+    final cloud = InMemoryCloudStore();
+    final auth = FakeAuthService(initialUser: asha);
+    final s = await makeState(auth, cloud);
+    await s.completeOnboarding('Asha');
+    String? id;
+    await s.createGroup(createdAt: kToday, chitValue: 10000, onCreated: (g) => id = g.id);
+    await settle(s);
+    expect(cloud.contains(id!), isTrue);
+
+    expect(await s.deleteAccount(), isNull);
+    await settle(s);
+
+    expect(cloud.contains(id!), isFalse);
+    expect(auth.deleted, 1);
+    expect(s.needsLogin, isTrue);
+    expect(s.groups, isEmpty);
+    expect(s.profile, isNull);
+  });
+
+  test('deleting the account leaves groups run by someone else alone', () async {
+    final cloud = InMemoryCloudStore();
+    final ashaState = await makeState(FakeAuthService(initialUser: asha), cloud);
+    await ashaState.completeOnboarding('Asha');
+    String? id;
+    await ashaState.createGroup(createdAt: kToday, chitValue: 10000, onCreated: (g) => id = g.id);
+    await settle(ashaState);
+    expect(
+      await ashaState.run(id!, (g) => ashaState.actions.addMember(g, 'Ravi', phone: '9876500002', actor: 'Asha')),
+      isNull,
+    );
+    await settle(ashaState);
+
+    final raviAuth = FakeAuthService(initialUser: ravi);
+    final raviState = await makeState(raviAuth, cloud);
+    await settle(raviState);
+    expect(raviState.groups, hasLength(1));
+    expect(await raviState.deleteAccount(), isNull);
+    expect(cloud.contains(id!), isTrue);
+    expect(raviAuth.deleted, 1);
+  });
+
+  test('a failed deletion reports why and can be tried again', () async {
+    final cloud = InMemoryCloudStore();
+    final auth = FakeAuthService(initialUser: asha)..deleteFailure = 'Sign in again first.';
+    final s = await makeState(auth, cloud);
+    await s.completeOnboarding('Asha');
+    expect(await s.deleteAccount(), 'Sign in again first.');
+    expect(s.needsLogin, isFalse);
+    expect(s.profile, isNotNull);
+
+    auth.deleteFailure = null;
+    expect(await s.deleteAccount(), isNull);
+    expect(s.needsLogin, isTrue);
+  });
 }
