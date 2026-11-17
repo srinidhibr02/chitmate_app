@@ -13,6 +13,7 @@ import '../widgets/common.dart';
 import 'create_group_screen.dart';
 import 'group_screen.dart';
 import 'rules_screen.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -56,9 +57,11 @@ class HomeScreen extends StatelessWidget {
                     Navigator.of(context).push(softRoute<void>(const RulesScreen())),
               ),
               IconButton(
-                tooltip: 'Your profile',
-                icon: const Icon(Icons.account_circle_outlined),
-                onPressed: () => showAppSheet<void>(context, (_) => const _ProfileSheet()),
+                key: const Key('open-settings'),
+                tooltip: 'Settings',
+                icon: const Icon(Icons.settings_outlined),
+                onPressed: () =>
+                    Navigator.of(context).push(softRoute<void>(const SettingsScreen())),
               ),
               const SizedBox(width: 4),
             ],
@@ -284,153 +287,6 @@ class GroupCard extends StatelessWidget {
             ),
           ),
           Icon(Icons.chevron_right_rounded, color: scheme.onSurfaceVariant),
-        ],
-      ),
-    );
-  }
-}
-
-class _ProfileSheet extends StatefulWidget {
-  const _ProfileSheet();
-
-  @override
-  State<_ProfileSheet> createState() => _ProfileSheetState();
-}
-
-class _ProfileSheetState extends State<_ProfileSheet> {
-  late final TextEditingController _name;
-  String? _error;
-  String? _deleteError;
-  bool _initialised = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (!_initialised) {
-      _initialised = true;
-      _name = TextEditingController(text: AppScope.of(context).profile?.name ?? '');
-    }
-  }
-
-  @override
-  void dispose() {
-    _name.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    final state = AppScope.of(context);
-    final navigator = Navigator.of(context);
-    final err = await state.setProfileName(_name.text);
-    if (!mounted) return;
-    if (err != null) {
-      setState(() => _error = err);
-      return;
-    }
-    navigator.pop();
-  }
-
-  Future<void> _signOut() async {
-    final state = AppScope.of(context);
-    final navigator = Navigator.of(context);
-    final ok = await confirmDialog(
-      context,
-      title: 'Sign out?',
-      message: 'You will need a new code to sign in again.',
-      confirmLabel: 'Sign out',
-    );
-    if (!ok) return;
-    navigator.pop();
-    await state.signOut();
-  }
-
-  Future<void> _deleteAccount() async {
-    final state = AppScope.of(context);
-    final navigator = Navigator.of(context);
-    final ok = await confirmDialog(
-      context,
-      title: 'Delete your account?',
-      message: 'This permanently deletes your sign-in and every group you organise, '
-          'with its members, chits, votes and results. Groups you only belong to are '
-          'not affected. This cannot be undone.',
-      confirmLabel: 'Delete everything',
-      destructive: true,
-    );
-    if (!ok || !mounted) return;
-    setState(() => _deleteError = null);
-    final err = await state.deleteAccount();
-    if (!mounted) return;
-    if (err != null) {
-      setState(() => _deleteError = err);
-      return;
-    }
-    navigator.pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text('Your profile',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
-          Text(
-            'This name is shown on the updates you post as organiser.',
-            style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 18),
-          TextField(
-            controller: _name,
-            textCapitalization: TextCapitalization.words,
-            maxLength: 40,
-            decoration: appInput(context, label: 'Your name').copyWith(errorText: _error),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(onPressed: _save, child: const Text('Save')),
-          ),
-          if (AppScope.of(context).auth != null) ...<Widget>[
-            const SizedBox(height: 8),
-            Text(
-              'Signed in as ${AppScope.of(context).user?.phone ?? ''}',
-              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-            ),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton.icon(
-                key: const Key('sign-out'),
-                onPressed: _signOut,
-                icon: const Icon(Icons.logout_rounded),
-                label: const Text('Sign out'),
-              ),
-            ),
-            SizedBox(
-              width: double.infinity,
-              child: TextButton.icon(
-                key: const Key('delete-account'),
-                onPressed: _deleteAccount,
-                icon: Icon(Icons.delete_forever_rounded,
-                    color: Theme.of(context).colorScheme.error),
-                label: Text('Delete account',
-                    style: TextStyle(color: Theme.of(context).colorScheme.error)),
-              ),
-            ),
-            if (_deleteError != null)
-              NoticeBanner(
-                key: const Key('delete-error'),
-                text: _deleteError!,
-                icon: Icons.error_outline_rounded,
-                color: Theme.of(context).colorScheme.error,
-              ),
-          ],
         ],
       ),
     );
