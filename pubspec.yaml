@@ -1,7 +1,7 @@
 name: chit_mate
 description: "ChitMate - run friendly chit fund / savings circles with shared chits, voting, fair random draws and payment tracking."
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.9.0
