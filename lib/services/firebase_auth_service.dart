@@ -135,11 +135,13 @@ class FirebaseAuthService implements AuthService {
         return 'We cannot send more codes right now. Please try again later.';
       case 'network-request-failed':
         return 'No internet connection. Check your network and try again.';
+      case 'app-not-authorized':
+        return 'This version of the app is not registered for sign-in yet (app-not-authorized). '
+            'Please contact support.';
       case 'invalid-app-credential':
       case 'captcha-check-failed':
       case 'missing-client-identifier':
-      case 'app-not-authorized':
-        return 'This device could not be verified. Please try again.';
+        return 'This device could not be verified. Please try again ($code).';
       default:
         return 'Sign-in failed ($code). Please try again.';
     }

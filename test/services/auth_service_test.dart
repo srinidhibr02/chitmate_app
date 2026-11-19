@@ -57,6 +57,7 @@ void main() {
     expect(FirebaseAuthService.friendlyMessage('network-request-failed'), contains('internet'));
     expect(FirebaseAuthService.friendlyMessage('operation-not-allowed'), contains('not turned on'));
     expect(FirebaseAuthService.friendlyMessage('invalid-app-credential'), contains('verified'));
+    expect(FirebaseAuthService.friendlyMessage('app-not-authorized'), contains('not registered'));
     expect(FirebaseAuthService.friendlyMessage('something-new'), contains('something-new'));
   });
 }
